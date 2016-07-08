@@ -3,7 +3,6 @@ package com.esrlabs.geofence;
 import android.location.Location;
 
 public class CircleGeofence implements Geofence {
-
     final Location center;
     final float radiusInMeters;
 
@@ -14,7 +13,8 @@ public class CircleGeofence implements Geofence {
 
     @Override
     public boolean containsLocation(Location location) {
-        // TODO
-        return false;
+        float distanceInMeters = center.distanceTo(location);
+
+        return (distanceInMeters <= radiusInMeters);
     }
 }

@@ -22,13 +22,51 @@ public class PolygonGeofence implements Geofence {
      */
     @Override
     public boolean containsLocation(Location location) {
-        int numberOfCorners = polygonPoints.size();
-
-        //adding the first corner at the end so that we can count the edge between last and first corners too
-        List<Location> corners = new ArrayList<Location>(polygonPoints);
-        corners.add(polygonPoints.get(0));
-
-        return false;
+        return pointIsInRegion(location);
     }
 
+    private boolean pointIsInRegion(Location aTestLocation) {
+        boolean inside = false;
+
+        int count = polygonPoints.size();
+        for (int i = 0; i < count; i++) {
+            Location beginOfLineLocation = polygonPoints.get(i);
+            Location endOfLineLocation = polygonPoints.get((i + 1) % count);
+            if (rayCrossesSegment(aTestLocation, beginOfLineLocation, endOfLineLocation)) {
+                inside = !inside;
+            }
+        }
+
+        return inside;
+    }
+
+    private boolean rayCrossesSegment(Location point, Location beginOfLine, Location endOfLine) {
+        double pointX = point.getLongitude();
+        double pointY = point.getLatitude();
+        double beginOfLineX = beginOfLine.getLongitude();
+        double beginOfLineY = beginOfLine.getLatitude();
+        double endOfLineX = endOfLine.getLongitude();
+        double endOfLineY = endOfLine.getLatitude();
+
+        if (beginOfLineY > endOfLineY) {
+            return rayCrossesSegment(point, endOfLine, beginOfLine);
+        }
+
+        if (pointY == beginOfLineY || pointY == endOfLineY) {
+            pointY += 0.00000001;
+        }
+
+        if ( (pointY > endOfLineY || pointY < beginOfLineY) || (pointX > Math.max(beginOfLineX, endOfLineX)) ) {
+            return false;
+        }
+
+        if (pointX < Math.min(beginOfLineX, endOfLineX)) {
+            return true;
+        }
+
+        double red = (pointY - beginOfLineY) / (double) (pointX - beginOfLineX);
+        double blue = (endOfLineY - beginOfLineY) / (double) (endOfLineX - beginOfLineX);
+
+        return (blue >= red);
+    }
 }

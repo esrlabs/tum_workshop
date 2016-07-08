@@ -82,7 +82,8 @@ public class GeofenceAppTest extends TestCase {
     @Test
     public void shouldReceiveTheLatestLocation() throws Exception {
         simulateNewLocation(someLocation);
-        assertTrue(someLocation.equals(geofenceApp.latestLocation()));
+        Location testLocation = geofenceApp.latestLocation();
+        assertTrue(someLocation.equals(testLocation));
     }
 
     @Test

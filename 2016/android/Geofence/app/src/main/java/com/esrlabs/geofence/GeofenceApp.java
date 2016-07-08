@@ -5,6 +5,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -32,13 +33,18 @@ import static com.esrlabs.geofence.Utils.location;
  * - that the notification appears in the emulator
  */
 public class GeofenceApp extends Service implements LocationListener {
-
     public static final String TAG = "GeofenceApp";
 
     private LocationManager locationManager;
     private Geofence geofence;
+    private ServiceConnection mConnection;
+    private HeadUnit mOurHeadUnitService;
+    private Location mLatestLocation;
 
-    // TODO: create constructor
+    public GeofenceApp(LocationManager aLocationManager, Geofence aGeofence) {
+        locationManager = aLocationManager;
+        geofence = aGeofence;
+    }
 
     @Override
     public void onCreate() {
@@ -47,8 +53,7 @@ public class GeofenceApp extends Service implements LocationListener {
         Log.d(TAG, "onCreate");
 
         if (locationManager == null) {
-            locationManager = (LocationManager)
-                    this.getSystemService(Context.LOCATION_SERVICE);
+            locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         }
 
         initLocationListener();
@@ -61,12 +66,36 @@ public class GeofenceApp extends Service implements LocationListener {
         }
     }
 
+
+
     private void initHeadUnitService() {
-        // TODO
+        Intent headUnitServiceIntent = new Intent(HeadUnit.class.getName());
+        headUnitServiceIntent.setPackage("com.esrlabs.headunitservice");
+
+        mConnection = new ServiceConnection() {
+            // Called when the connection with the service is established
+            public void onServiceConnected(ComponentName className, IBinder service) {
+                // Following the example above for an AIDL interface,
+                // this gets an instance of the IRemoteInterface, which we can use to call on the service
+                mOurHeadUnitService = HeadUnit.Stub.asInterface(service);
+            };
+
+            // Called when the connection with the service disconnects unexpectedly
+            public void onServiceDisconnected(ComponentName className) {
+                Log.e(TAG, "Service has unexpectedly disconnected");
+                mOurHeadUnitService = null;
+            }
+        };
+
+        bindService(headUnitServiceIntent, mConnection, BIND_AUTO_CREATE);
     }
 
     private void initLocationListener() {
-        // TODO
+        List<String> locationProviders = locationManager.getAllProviders();
+
+        for(String provider : locationProviders) {
+            locationManager.requestLocationUpdates(provider, 0, 0, this);
+        }
     }
 
     @Override
@@ -76,7 +105,17 @@ public class GeofenceApp extends Service implements LocationListener {
 
     @Override
     public void onLocationChanged(Location location) {
-        // TODO
+        mLatestLocation = location;
+
+        try {
+            if(geofence.containsLocation(location)) {
+                mOurHeadUnitService.hideAllNotifications();
+            } else {
+                mOurHeadUnitService.showNotification("Outside Geofence!");
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -94,9 +133,7 @@ public class GeofenceApp extends Service implements LocationListener {
 
     }
 
-    public Location latestLocation()
-    {
-        // TODO
-        return null;
+    public Location latestLocation() {
+        return mLatestLocation;
     }
 }
